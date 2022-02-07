@@ -102,6 +102,8 @@ export class Canary extends Resource {
       dimensions: {
         CanaryName: canaryName,
       },
+      //canary is configured to run every 15 minutes, so we are considering
+      //3 eval period of 16 mins each.
       period: 960, //in seconds
       evaluationPeriods: 3,
       statistic: 'SampleCount',

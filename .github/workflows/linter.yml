@@ -82,13 +82,3 @@ jobs:
           # This means that if you run the linter “out of the box”, all languages will be checked.
           # But if you wish to select specific linters, we give you full control to choose which linters are run, and won’t run anything unexpected.
           ####
-
-          # Flag to enable or disable the linting process of the JavaScript language. (Utilizing: eslint)
-          # Will validate any raw *.js in the repo like a jest.config.js
-          VALIDATE_JAVASCRIPT_ES: true
-
-          # Flag to enable or disable the linting process of the TypeScript language. (Utilizing: eslint)
-          VALIDATE_TYPESCRIPT_ES: true
-
-          # Flag to enable or disable the linting process of the YAML language.
-          VALIDATE_YAML: true
