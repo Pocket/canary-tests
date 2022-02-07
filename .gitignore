@@ -1,9 +1,10 @@
 # Build files
-dist
 .terraform/
-node_modules/
 cdktf.out/
 .gen/
-
+/node_modules/
+synthetics/index.zip
+*.js
+dist/
 .idea/
 
