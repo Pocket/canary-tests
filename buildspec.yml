@@ -44,7 +44,6 @@ phases:
       - echo Setting Github Access Token
       - echo "//npm.pkg.github.com/:_authToken=${GITHUB_ACCESS_TOKEN}" > ~/.npmrc
       - echo Setting environment variables
-      - cd .aws
 
       # Until we use a docker image with tfenv built in lets install it.
       # This lets us store the needed terraform verison in the source and not rely on changing amazon values.
@@ -58,7 +57,7 @@ phases:
       - npm ci
       # synthesize the js into terraform json with the proper node environment
       - 'if [ "$GIT_BRANCH" == "$DEV_BRANCH" ]; then NODE_ENV=development npm run synth; else npm run synth; fi'
-      - cd cdktf.out/stacks/acme #TODO: Update this to match the synthesized terraform stack name in line 306 of .aws/main.ts
+      - cd cdktf.out/stacks/canary-tests
       - terraform init
   build:
     commands:
