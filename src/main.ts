@@ -57,7 +57,7 @@ class CanariesStack extends TerraformStack {
       //'e2esi' stands for "e2e-savedItems."
       // Synthetics demands that names be 21 characters or less.
     };
-    let canary = new Canary(this, `${canaryProps.name}-e2e-canary`, canaryProps);
+    new Canary(this, `${canaryProps.name}-e2e-canary`, canaryProps);
 
   }
 
