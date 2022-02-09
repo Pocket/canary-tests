@@ -17,15 +17,15 @@ type CanaryProps = {
   accountId: string;
   canaryBucket: S3Bucket;
   pagerDutyHandler: PocketPagerDuty;
-  name: string,
-  source: string,
+  name: string;
+  source: string;
 };
 
 export class Canary extends Resource {
   constructor(scope, name, private readonly props: CanaryProps) {
     super(scope, name);
 
-    let canary = this.createSyntheticCanary();
+    const canary = this.createSyntheticCanary();
     this.createSyntheticAlarm(canary.name, props.pagerDutyHandler);
   }
 
@@ -77,21 +77,28 @@ export class Canary extends Resource {
   }
 
   private syntheticsAssumePolicyDocument() {
-    return new DataAwsIamPolicyDocument(this, `${this.props.name}-assume-policy-document`, {
-      version: '2012-10-17',
-      statement: [
-        {
-          effect: 'Allow',
-          actions: ['sts:AssumeRole'],
-          principals: [
-            {
-              identifiers: ['lambda.amazonaws.com', 'synthetics.amazonaws.com'],
-              type: 'Service',
-            },
-          ],
-        },
-      ],
-    }).json;
+    return new DataAwsIamPolicyDocument(
+      this,
+      `${this.props.name}-assume-policy-document`,
+      {
+        version: '2012-10-17',
+        statement: [
+          {
+            effect: 'Allow',
+            actions: ['sts:AssumeRole'],
+            principals: [
+              {
+                identifiers: [
+                  'lambda.amazonaws.com',
+                  'synthetics.amazonaws.com',
+                ],
+                type: 'Service',
+              },
+            ],
+          },
+        ],
+      }
+    ).json;
   }
 
   private createSyntheticAlarm(canaryName: string, pagerDuty: PocketPagerDuty) {
@@ -118,33 +125,45 @@ export class Canary extends Resource {
   }
 
   private syntheticsExecutionRole() {
-    const iamRole = new IamRole(this, `${this.props.name}-synthetics-execution-role`, {
-      name: `${config.prefix}-${this.props.name}-ExecutionRole`,
-      assumeRolePolicy: this.syntheticsAssumePolicyDocument(),
-    });
+    const iamRole = new IamRole(
+      this,
+      `${this.props.name}-synthetics-execution-role`,
+      {
+        name: `${config.prefix}-${this.props.name}-ExecutionRole`,
+        assumeRolePolicy: this.syntheticsAssumePolicyDocument(),
+      }
+    );
 
     const policy = new IamPolicy(this, `${this.props.name}-execution-policy`, {
       name: `${config.prefix}-${this.props.name}-ExecutionPolicy`,
       policy: this.getPolicyDocument(),
     });
 
-    new IamRolePolicyAttachment(this, `${this.props.name}-execution-role-policy-attachment`, {
-      role: iamRole.name,
-      policyArn: policy.arn,
-      dependsOn: [iamRole, policy],
-    });
+    new IamRolePolicyAttachment(
+      this,
+      `${this.props.name}-execution-role-policy-attachment`,
+      {
+        role: iamRole.name,
+        policyArn: policy.arn,
+        dependsOn: [iamRole, policy],
+      }
+    );
 
     return iamRole;
   }
 
   private createSyntheticCanary() {
-    const zipFile = new DataArchiveFile(this, `${this.props.name}-synthetic-zip-file`, {
-      type: 'zip',
-      // We need the name to be unique for AWS to refresh its cache of the code,
-      // and this is a way to randomize the name without importing an extra dependency.
-      outputPath: `index-${(+new Date()).toString(36)}.zip`,
-      sourceDir: this.props.source,
-    });
+    const zipFile = new DataArchiveFile(
+      this,
+      `${this.props.name}-synthetic-zip-file`,
+      {
+        type: 'zip',
+        // We need the name to be unique for AWS to refresh its cache of the code,
+        // and this is a way to randomize the name without importing an extra dependency.
+        outputPath: `index-${(+new Date()).toString(36)}.zip`,
+        sourceDir: this.props.source,
+      }
+    );
 
     return new SyntheticsCanary(this, `${this.props.name}-synthetic`, {
       // Synthetics demands that names be 21 characters or less.

@@ -8,12 +8,11 @@ import {
 import {
   AwsProvider,
   DataAwsCallerIdentity,
-  DataAwsRegion, S3Bucket
+  DataAwsRegion,
+  S3Bucket,
 } from '@cdktf/provider-aws';
 import { config } from './config';
-import {
-  PocketPagerDuty,
-} from '@pocket-tools/terraform-modules';
+import { PocketPagerDuty } from '@pocket-tools/terraform-modules';
 import { PagerdutyProvider } from '@cdktf/provider-pagerduty';
 import { LocalProvider } from '@cdktf/provider-local';
 import { NullProvider } from '@cdktf/provider-null';
@@ -47,7 +46,7 @@ class CanariesStack extends TerraformStack {
 
     //to create a new canary, set props, create a new `Canary` resource
     //and attach it to index.ts
-    let canaryProps = {
+    const canaryProps = {
       region: this.region.name,
       accountId: this.caller.accountId,
       canaryBucket: canaryBucket,
@@ -58,7 +57,6 @@ class CanariesStack extends TerraformStack {
       // Synthetics demands that names be 21 characters or less.
     };
     new Canary(this, `${canaryProps.name}-e2e-canary`, canaryProps);
-
   }
 
   private createSyntheticsS3Bucket() {
