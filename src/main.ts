@@ -46,7 +46,7 @@ class CanariesStack extends TerraformStack {
 
     //to create a new canary, set props, create a new `Canary` resource
     //and attach it to index.ts
-    let canaryProps = {
+    const canaryProps = {
       region: this.region.name,
       accountId: this.caller.accountId,
       canaryBucket: canaryBucket,
