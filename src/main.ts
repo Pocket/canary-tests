@@ -46,13 +46,14 @@ class CanariesStack extends TerraformStack {
 
     //to create a new canary, set props, create a new `Canary` resource
     //and attach it to index.ts
-    const canaryProps = {
+    let canaryProps = {
       region: this.region.name,
       accountId: this.caller.accountId,
       canaryBucket: canaryBucket,
       pagerDutyHandler: pagerDuty,
       source: config.canary.source,
-      name: `${config.prefix}-e2esi`,
+      name: `${config.shortName}-${config.environment}-e2esi`,
+
       //'e2esi' stands for "e2e-savedItems."
       // Synthetics demands that names be 21 characters or less.
     };
