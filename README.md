@@ -1,4 +1,4 @@
-# Backend Starter repository
+# Canary Tests
 
 This repository contains the AWS canaries infrastrucure to roll-out a new synthetics health check or
 end to end test. 
