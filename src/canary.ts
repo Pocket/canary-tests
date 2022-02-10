@@ -118,7 +118,9 @@ export class Canary extends Resource {
       threshold: 1,
       alarmDescription: `failed canary test: ${canaryName}`,
       insufficientDataActions: [],
-      alarmActions: config.isDev ? [] : [pagerDuty.snsCriticalAlarmTopic.arn],
+      alarmActions: config.isDev
+        ? []
+        : [pagerDuty.snsNonCriticalAlarmTopic.arn],
       tags: config.tags,
       treatMissingData: 'notBreaching',
     });
