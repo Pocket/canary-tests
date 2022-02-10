@@ -1,101 +1,108 @@
-import { ApolloServer } from 'apollo-server-express';
-import typeDefs from './typeDefs';
-import { resolvers } from './resolvers';
-import { buildFederatedSchema } from '@apollo/federation';
-import * as Sentry from '@sentry/node';
-import config from './config';
-import responseCachePlugin from 'apollo-server-plugin-response-cache';
-import { sentryPlugin } from '@pocket-tools/apollo-utils';
-import { GraphQLRequestContext } from 'apollo-server-types';
-import AWSXRay from 'aws-xray-sdk-core';
-import xrayExpress from 'aws-xray-sdk-express';
-import express from 'express';
-import https from 'https';
-import { getRedisCache } from './cache';
-import { ApolloServerPluginCacheControl } from 'apollo-server-core';
+import { Construct } from 'constructs';
+import {
+  App,
+  DataTerraformRemoteState,
+  RemoteBackend,
+  TerraformStack,
+} from 'cdktf';
+import {
+  AwsProvider,
+  DataAwsCallerIdentity,
+  DataAwsRegion,
+  S3Bucket,
+} from '@cdktf/provider-aws';
+import { config } from './config';
+import { PocketPagerDuty } from '@pocket-tools/terraform-modules';
+import { PagerdutyProvider } from '@cdktf/provider-pagerduty';
+import { LocalProvider } from '@cdktf/provider-local';
+import { NullProvider } from '@cdktf/provider-null';
+import { ArchiveProvider } from '@cdktf/provider-archive';
+import { Canary } from './canary';
 
-const serviceName = 'Acme';
-//todo: change service name
+class CanariesStack extends TerraformStack {
+  private region: DataAwsRegion;
+  private caller: DataAwsCallerIdentity;
 
-//Set XRAY to just log if the context is missing instead of a runtime error
-AWSXRay.setContextMissingStrategy('LOG_ERROR');
+  constructor(scope: Construct, name: string) {
+    super(scope, name);
 
-//Add the AWS XRAY ECS plugin that will add ecs specific data to the trace
-AWSXRay.config([AWSXRay.plugins.ECSPlugin]);
+    new AwsProvider(this, 'aws', { region: 'us-east-1' });
+    new PagerdutyProvider(this, 'pagerduty_provider', { token: undefined });
+    new LocalProvider(this, 'local_provider');
+    new NullProvider(this, 'null_provider');
+    new ArchiveProvider(this, 'archive_provider');
 
-//Capture all https traffic this service sends
-//This is to auto capture node fetch requests (like to parser)
-AWSXRay.captureHTTPsGlobal(https, true);
+    new RemoteBackend(this, {
+      hostname: 'app.terraform.io',
+      organization: 'Pocket',
+      workspaces: [{ prefix: `${config.name}-` }],
+    });
 
-//Capture all promises that we make
-AWSXRay.capturePromise();
+    this.region = new DataAwsRegion(this, 'region');
+    this.caller = new DataAwsCallerIdentity(this, 'caller');
+    const pagerDuty = this.createPagerDuty();
 
-Sentry.init({
-  ...config.sentry,
-  debug: config.sentry.environment == 'development',
-});
+    const canaryBucket = this.createSyntheticsS3Bucket();
 
-// TODO: Decide whether the example caching strategy below suits your project.
-const cache = getRedisCache();
-// The ApolloServer constructor requires two parameters: your schema
-// definition and your set of resolvers.
-const server = new ApolloServer({
-  schema: buildFederatedSchema([{ typeDefs, resolvers }]),
-  // Caches the queries that apollo clients can send via a hashed get request
-  // This allows us to cache resolver decisions
-  persistedQueries: {
-    cache,
-    ttl: 300, // caching expiration time in seconds
-  },
-  //The cache that Apollo should use for all of its responses
-  //https://www.apollographql.com/docs/apollo-server/data/data-sources/#using-memcachedredis-as-a-cache-storage-backend
-  //This will only be used if all data in the response is cacheable
-  //This will add the CDN cache control headers to the response and will cache it in memcached if its cacheable
-  cache,
-  plugins: [
-    //Copied from Apollo docs, the sessionID signifies if we should seperate out caches by user.
-    responseCachePlugin({
-      //https://www.apollographql.com/docs/apollo-server/performance/caching/#saving-full-responses-to-a-cache
-      //The user id is added to the request header by the apollo gateway (client api)
-      sessionId: (requestContext: GraphQLRequestContext) =>
-        requestContext?.request?.http?.headers?.has('userId')
-          ? requestContext?.request?.http?.headers?.get('userId')
-          : null,
-    }),
-    sentryPlugin,
-    // Set a default cache control of 0 seconds so it respects the individual set cache controls on the schema
-    // With this set to 0 it will not cache by default
-    ApolloServerPluginCacheControl({ defaultMaxAge: 0 }),
-  ],
-  context: {
-    // Example request context. This context is accessible to all resolvers.
-    // dataLoaders: {
-    //   itemIdLoader: itemIdLoader,
-    //   itemUrlLoader: itemUrlLoader,
-    // },
-    // repositories: {
-    //   itemResolver: getItemResolverRepository(),
-    // },
-  },
-});
+    //to create a new canary, set props, create a new `Canary` resource
+    //and attach it to index.ts
+    const canaryProps = {
+      region: this.region.name,
+      accountId: this.caller.accountId,
+      canaryBucket: canaryBucket,
+      pagerDutyHandler: pagerDuty,
+      source: config.canary.source,
+      name: `${config.shortName}-${config.environment}-e2esi`,
 
-const app = express();
+      //'e2esi' stands for "e2e-savedItems."
+      // Synthetics demands that names be 21 characters or less.
+    };
+    new Canary(this, `${canaryProps.name}-e2e-canary`, canaryProps);
+  }
 
-//If there is no host header (really there always should be..) then use parser-wrapper as the name
-app.use(xrayExpress.openSegment(serviceName));
+  private createSyntheticsS3Bucket() {
+    return new S3Bucket(this, 'synthetic-s3-bucket', {
+      bucket:
+        `Pocket-${config.prefix}-CanaryE2ETests-TestResults`.toLowerCase(),
+      tags: config.tags,
+    });
+  }
 
-//Set XRay to use the host header to open its segment name.
-AWSXRay.middleware.enableDynamicNaming('*');
+  /**
+   * Create PagerDuty service for alerts
+   * @private
+   */
+  private createPagerDuty() {
+    // don't create any pagerduty resources if in dev
+    if (config.isDev) {
+      return undefined;
+    }
 
-//Apply the GraphQL middleware into the express app
-server.start().then(() => {
-  server.applyMiddleware({ app, path: '/' });
-});
+    const incidentManagement = new DataTerraformRemoteState(
+      this,
+      'incident_management',
+      {
+        organization: 'Pocket',
+        workspaces: {
+          name: 'incident-management',
+        },
+      }
+    );
 
-//Make sure the express app has the xray close segment handler
-app.use(xrayExpress.closeSegment());
+    return new PocketPagerDuty(this, 'pagerduty', {
+      prefix: config.prefix,
+      service: {
+        criticalEscalationPolicyId: incidentManagement.get(
+          'policy_backend_critical_id'
+        ),
+        nonCriticalEscalationPolicyId: incidentManagement.get(
+          'policy_backend_non_critical_id'
+        ),
+      },
+    });
+  }
+}
 
-// The `listen` method launches a web server.
-app.listen({ port: 4001 }, () =>
-  console.log(`🚀 Server ready at http://localhost:4001${server.graphqlPath}`)
-);
+const app = new App();
+new CanariesStack(app, config.domainPrefix);
+app.synth();

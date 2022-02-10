@@ -1,25 +1,23 @@
 # Backend Starter repository
 
-This repository can be used as a template to spin up a new service. 
-
-Note: please change all reference to `Acme` to your service name. There are `Todo`s in this repository
-that points to name changes to your new service name, please address them before spinning up the service.
+This repository contains the AWS canaries infrastrucure to roll-out a new synthetics health check or
+end to end test. 
 
 ## Folder structure
-- the infrastructure code is present in `.aws`
-- the application code is in `src`
-- `.docker` contains local setup
+- the code for canaries are insdie the `src` folder.
 - `.circleci` contains circleCI setup
+
+## To add a new test.
+- create a new test file inside `src` folder with the format `src/<your_test_folder>/nodejs/node_modules/index.ts`
+- in main.ts, create a new `Canary` resource by passing the canary `name` and set the `source` to the `dist/<your_test_folder>` as a relative path from `cdk.tf.json` file.
+- to access secretStore for testCredentials, we can directly use the aws-sdk inside the index.ts file.
 
 ## Develop Locally
 ```bash
 npm install
-npm start:dev
-```
-
-## Start docker
-```bash
-# npm ci not required if already up-to-date
-npm ci
-docker compose up
+npm run build:dev
+cd cdktf.out/stacks/canary-tests/
+terraform login
+terraform init
+terraform plan/apply
 ```

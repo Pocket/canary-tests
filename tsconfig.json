@@ -1,7 +1,5 @@
 {
   "compilerOptions": {
-    "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
     "target": "es2019",
     "module": "commonjs",
     "lib": [
@@ -11,16 +9,13 @@
       "es2020.symbol.wellknown"
     ],
     "outDir": "dist",
-    "rootDir": "src",
     "removeComments": true,
     "esModuleInterop": true,
-    "noEmitOnError": false,
+    "noEmitOnError": true,
     "sourceMap": true,
     "inlineSources": true,
-    "sourceRoot": "/",
-    "strictNullChecks": true,
-    "declaration": true
+    "sourceRoot": "/"
   },
-  "exclude": ["node_modules"],
-  "include": ["src/**/*.ts", "src/config"]
+  "include": ["**/*.ts", "src/synthetics/nodejs/node_modules"],
+  "exclude": ["node_modules", "dist"]
 }
