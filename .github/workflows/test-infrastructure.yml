@@ -11,7 +11,7 @@ jobs:
       working-directory: ./
     steps:
       - uses: actions/checkout@v2
-      - uses: hashicorp/setup-terraform@v1.4.0
+      - uses: hashicorp/setup-terraform@v2.0.3
         with:
           terraform_version: 1.1.5
           terraform_wrapper: false
