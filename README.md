@@ -1,7 +1,6 @@
 # Backend Starter repository
 
-This repository contains the AWS canaries infrastrucure to roll-out a new synthetics health check or
-end to end test. 
+This repository contains the AWS canaries infrastructure to roll-out a new synthetics health check or end to end test. 
 
 ## Folder structure
 - the code for canaries are insdie the `src` folder.
