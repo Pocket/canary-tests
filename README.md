@@ -1,3 +1,6 @@
+This repo is no longer used. All the checks originally made were failing for at least 6 months and its not being used for new synthetics - see github.com/pocket/aws-synthetic-checks instead.
+
+
 # Backend Starter repository
 
 This repository contains the AWS canaries infrastructure to roll-out a new synthetics health check or end to end test. 
